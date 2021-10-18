@@ -1,25 +1,80 @@
-import logo from './logo.svg';
-import './App.css';
+import React from 'react';
+import * as BooksAPI from './BooksAPI';
+import { Route } from 'react-router-dom';
+import BookList from './BookStore/BookList';
+import SearchBook from './BookStore/SearchBook';
+import './App.css'
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+class BooksApp extends React.Component {
+  state = {
+    books : [],
+  }
+
+  async componentDidMount() {
+    const books = await BooksAPI.getAll()
+      this.setState({ books })
+    }
+
+
+  shelves = [
+    {key: 'currentlyReading' , name: 'Currently Reading'},
+    {key: 'wantToRead', name: 'Want to Read'},
+    {key: 'read', name: 'Read'}
+  ]
+
+
+ ChangeShelf = (book, shelf) => {
+   BooksAPI.update(book, shelf).then(books => {
+     //if the book is a new book, add it to a shelf
+     if(book.shelf === 'none' && shelf !== 'none' ) {
+       this.setState(state => {
+        const newBooks = this.state.books.concat(book)
+        return{books: newBooks}
+       })
+     }
+
+     const updatedBooks = this.state.books.map(c => {
+       //if the book is already in the state, change the shelf
+       if(c.id === book.id) {
+         c.shelf = shelf
+       }
+       return c;
+     });
+
+     this.setState({
+       books: updatedBooks
+     });
+
+     //if 'none' shelf is chosen, then remove that book from the state
+     if(shelf === 'none') {
+       this.setState(state => {
+         const newBooks = state.books.filter(deleteBook => deleteBook.id !== book.id);
+         return {books: newBooks}
+       })
+     }
+   });  
+ }
+
+
+  render() {
+    const { books } = this.state;
+    return (
+      <div className="app">
+          <Route path ='/search'
+          render={() => (
+            <SearchBook books={books} onChangeShelf ={this.ChangeShelf} />
+          )}
+          />
+
+          <Route exact path ='/'
+          render={() => (
+            <BookList books={books} shelves={this.shelves} onChangeShelf={this.ChangeShelf} />
+          )}
+          />
+          </div>
+    
+    )
+  }
 }
 
-export default App;
+export default BooksApp
